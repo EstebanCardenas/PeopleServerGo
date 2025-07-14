@@ -1,21 +1,85 @@
 package main
 
-import "errors"
+import (
+	"encoding/csv"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+)
 
 func RecordsToMap(records [][]string) ([]map[string]any, error) {
-	if len(records) <= 1 {
-		return nil, errors.New("there are no available records")
-	}
-
-	headerRow := records[0]
 	result := make([]map[string]any, len(records)-1)
 	for i := 1; i < len(records); i++ {
 		row := records[i]
 		data := make(map[string]any)
-		for j, header := range headerRow {
-			data[header] = row[j]
-		}
+		data["id"], _ = strconv.Atoi(row[0])
+		data["name"] = row[1]
+		data["lastName"] = row[2]
+		data["profession"] = row[3]
+		data["age"], _ = strconv.Atoi(row[4])
 		result[i-1] = data
 	}
 	return result, nil
+}
+
+func getLastCsvRecord() ([]string, error) {
+	file, err := os.Open("data.csv")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	var lastRecord []string
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break // End of file
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error reading CSV record: %w", err)
+		}
+		lastRecord = record // Keep updating lastRecord with the current one
+	}
+
+	if lastRecord == nil {
+		return nil, fmt.Errorf("file is empty or contains no records")
+	}
+
+	return lastRecord, nil
+}
+
+func WritePersonMapToCsv(personMap map[string]any) error {
+	file, err := os.OpenFile("data.csv", os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	lastRecord, lastErr := getLastCsvRecord()
+	if lastErr != nil {
+		return lastErr
+	}
+	var lastIdx int
+	if lastRecord[0] == "id" {
+		lastIdx = 0
+	} else {
+		lastIdx, _ = strconv.Atoi(lastRecord[0])
+	}
+	content := []string{
+		fmt.Sprint(lastIdx + 1),
+		fmt.Sprint(personMap["name"]),
+		fmt.Sprint(personMap["lastName"]),
+		fmt.Sprint(personMap["profession"]),
+		fmt.Sprint(personMap["age"]),
+	}
+	csvWriter := csv.NewWriter(file)
+	csvErr := csvWriter.Write(content)
+	if csvErr != nil {
+		return csvErr
+	}
+	csvWriter.Flush()
+
+	return nil
 }
