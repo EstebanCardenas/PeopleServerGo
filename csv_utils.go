@@ -8,6 +8,17 @@ import (
 	"strconv"
 )
 
+const fileName = "data.csv"
+
+func ReadCsvDataAsString() (string, error) {
+	contentBytes, readErr := os.ReadFile(fileName)
+	if readErr != nil {
+		return "", readErr
+	}
+	content := string(contentBytes)
+	return content, nil
+}
+
 func RecordsToMap(records [][]string) ([]map[string]any, error) {
 	result := make([]map[string]any, len(records)-1)
 	for i := 1; i < len(records); i++ {
