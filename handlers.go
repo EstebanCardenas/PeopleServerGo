@@ -8,45 +8,31 @@ import (
 	"strings"
 )
 
-func setContentType(w http.ResponseWriter, contentType string) {
-	w.Header().Set("Content-Type", contentType)
-}
-
 func GetPeopleHandler(w http.ResponseWriter, req *http.Request) {
 	csvContent, readErr := ReadCsvDataAsString()
 	if readErr != nil {
-		setContentType(w, "text/plain")
-		w.WriteHeader(500)
-		fmt.Fprint(w, "Error while reading CSV file")
+		http.Error(w, "Error while reading CSV file", 500)
 		return
 	}
 	csvReader := csv.NewReader(strings.NewReader(csvContent))
 	records, csvErr := csvReader.ReadAll()
 	if csvErr != nil {
-		setContentType(w, "text/plain")
-		w.WriteHeader(500)
-		fmt.Fprint(w, "Error while reading CSV file")
+		http.Error(w, "Error while reading CSV file", 500)
 		return
 	}
 	people, rtmErr := RecordsToMap(records)
 	if rtmErr != nil {
-		setContentType(w, "text/plain")
-		w.WriteHeader(500)
-		fmt.Println(rtmErr)
-		fmt.Fprint(w, "Error parsing csv to JSON response")
+		http.Error(w, "Error parsing csv to JSON response", 500)
 		return
 	}
-
 	respContent, parseErr := ParseMapSliceToJsonStr(people)
 	if parseErr != nil {
-		setContentType(w, "text/plain")
-		w.WriteHeader(500)
 		fmt.Println(parseErr)
-		fmt.Fprint(w, "Error parsing csv to JSON response")
+		http.Error(w, "Error parsing csv to JSON response", 500)
 		return
 	}
 
-	setContentType(w, "application/json")
+	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprint(w, respContent)
 }
 
@@ -78,8 +64,6 @@ func PeopleHandler(w http.ResponseWriter, req *http.Request) {
 	case "POST":
 		CreatePersonHandler(w, req)
 	default:
-		setContentType(w, "text/plain")
-		w.WriteHeader(405)
-		fmt.Fprint(w, "Unsupported HTTP method")
+		http.Error(w, "Unsupported HTTP method", http.StatusMethodNotAllowed)
 	}
 }
