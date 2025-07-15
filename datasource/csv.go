@@ -1,4 +1,4 @@
-package main
+package datasource
 
 import (
 	"encoding/csv"
@@ -6,11 +6,12 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const fileName = "data.csv"
 
-func ReadCsvDataAsString() (string, error) {
+func readCsvDataAsString() (string, error) {
 	contentBytes, readErr := os.ReadFile(fileName)
 	if readErr != nil {
 		return "", readErr
@@ -19,7 +20,7 @@ func ReadCsvDataAsString() (string, error) {
 	return content, nil
 }
 
-func RecordsToMap(records [][]string) ([]map[string]any, error) {
+func recordsToMap(records [][]string) ([]map[string]any, error) {
 	result := make([]map[string]any, len(records)-1)
 	for i := 1; i < len(records); i++ {
 		row := records[i]
@@ -35,7 +36,7 @@ func RecordsToMap(records [][]string) ([]map[string]any, error) {
 }
 
 func getLastCsvRecord() ([]string, error) {
-	file, err := os.Open("data.csv")
+	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
@@ -62,8 +63,8 @@ func getLastCsvRecord() ([]string, error) {
 	return lastRecord, nil
 }
 
-func WritePersonMapToCsv(personMap map[string]any) error {
-	file, err := os.OpenFile("data.csv", os.O_APPEND|os.O_RDWR, 0644)
+func writePersonMapToCsv(personMap map[string]any) error {
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
@@ -91,6 +92,35 @@ func WritePersonMapToCsv(personMap map[string]any) error {
 		return csvErr
 	}
 	csvWriter.Flush()
+
+	return nil
+}
+
+type CsvDataSource struct{}
+
+func (ds *CsvDataSource) GetPeople() ([]map[string]any, error) {
+	csvContent, readErr := readCsvDataAsString()
+	if readErr != nil {
+		return nil, readErr
+	}
+	csvReader := csv.NewReader(strings.NewReader(csvContent))
+	records, csvErr := csvReader.ReadAll()
+	if csvErr != nil {
+		return nil, csvErr
+	}
+	people, rtmErr := recordsToMap(records)
+	if rtmErr != nil {
+		return nil, rtmErr
+	}
+
+	return people, nil
+}
+
+func (ds *CsvDataSource) SavePerson(person map[string]any) error {
+	err := writePersonMapToCsv(person)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

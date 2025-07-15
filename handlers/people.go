@@ -1,31 +1,21 @@
-package main
+package handlers
 
 import (
-	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"simple_server/application"
+	"simple_server/utils"
 )
 
 func GetPeopleHandler(w http.ResponseWriter, req *http.Request) {
-	csvContent, readErr := ReadCsvDataAsString()
-	if readErr != nil {
-		http.Error(w, "Error while reading CSV file", 500)
-		return
-	}
-	csvReader := csv.NewReader(strings.NewReader(csvContent))
-	records, csvErr := csvReader.ReadAll()
-	if csvErr != nil {
-		http.Error(w, "Error while reading CSV file", 500)
-		return
-	}
-	people, rtmErr := RecordsToMap(records)
-	if rtmErr != nil {
+	people, err := application.DataSource.GetPeople()
+	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error parsing csv to JSON response", 500)
 		return
 	}
-	respContent, parseErr := ParseMapSliceToJsonStr(people)
+	respContent, parseErr := utils.ParseMapSliceToJsonStr(people)
 	if parseErr != nil {
 		fmt.Println(parseErr)
 		http.Error(w, "Error parsing csv to JSON response", 500)
@@ -43,12 +33,12 @@ func CreatePersonHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	body := string(bodyBytes)
-	data, jsonErr := ParseJsonStrToMap(body)
+	data, jsonErr := utils.ParseJsonStrToMap(body)
 	if jsonErr != nil {
 		http.Error(w, "Error parsing body to map", 500)
 		return
 	}
-	writeErr := WritePersonMapToCsv(data)
+	writeErr := application.DataSource.SavePerson(data)
 	if writeErr != nil {
 		http.Error(w, "Failed to write to csv file", 500)
 		return
