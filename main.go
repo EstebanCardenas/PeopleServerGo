@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	"simple_server/application"
-	"simple_server/datasource"
+	ds "simple_server/datasource"
 	"simple_server/handlers"
 )
 
@@ -13,7 +13,14 @@ func registerHandlers() {
 }
 
 func main() {
+	dataSource := ds.NewSqlDataSource()
+	err := dataSource.InitDb()
+	if err != nil {
+		log.Fatal(err)
+	}
+	// dataSource.DeleteAllPeople()
+	application.SetDataSource(dataSource)
+
 	registerHandlers()
-	application.SetDataSource(&datasource.CsvDataSource{})
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
