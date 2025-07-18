@@ -11,14 +11,14 @@ import (
 func GetPeopleHandler(w http.ResponseWriter, req *http.Request) {
 	people, err := application.DataSource.GetPeople()
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Error parsing csv to JSON response", 500)
+		errorRes := fmt.Sprintf("Error while reading people from database: %v", err)
+		http.Error(w, errorRes, 500)
 		return
 	}
 	respContent, parseErr := utils.ParseMapSliceToJsonStr(people)
 	if parseErr != nil {
-		fmt.Println(parseErr)
-		http.Error(w, "Error parsing csv to JSON response", 500)
+		errorRes := fmt.Sprintf("Error while building JSON response: %v", parseErr)
+		http.Error(w, errorRes, 500)
 		return
 	}
 
@@ -29,18 +29,21 @@ func GetPeopleHandler(w http.ResponseWriter, req *http.Request) {
 func CreatePersonHandler(w http.ResponseWriter, req *http.Request) {
 	bodyBytes, bodyErr := io.ReadAll(req.Body)
 	if bodyErr != nil {
-		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		errorRes := fmt.Sprintf("Error reading request body: %v", bodyErr)
+		http.Error(w, errorRes, http.StatusBadRequest)
 		return
 	}
 	body := string(bodyBytes)
 	data, jsonErr := utils.ParseJsonStrToMap(body)
 	if jsonErr != nil {
-		http.Error(w, "Error parsing body to map", 500)
+		errorRes := fmt.Sprintf("Error parsing body to map: %v", jsonErr)
+		http.Error(w, errorRes, 500)
 		return
 	}
 	writeErr := application.DataSource.SavePerson(data)
 	if writeErr != nil {
-		http.Error(w, "Failed to write to csv file", 500)
+		errorRes := fmt.Sprintf("Failed to write data to database: %v", writeErr)
+		http.Error(w, errorRes, 500)
 		return
 	}
 
