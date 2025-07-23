@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"simple_server/application"
 	"simple_server/utils"
@@ -27,16 +26,9 @@ func GetPeopleHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func CreatePersonHandler(w http.ResponseWriter, req *http.Request) {
-	bodyBytes, bodyErr := io.ReadAll(req.Body)
-	if bodyErr != nil {
-		errorRes := fmt.Sprintf("Error reading request body: %v", bodyErr)
-		http.Error(w, errorRes, http.StatusBadRequest)
-		return
-	}
-	body := string(bodyBytes)
-	data, jsonErr := utils.ParseJsonStrToMap(body)
-	if jsonErr != nil {
-		errorRes := fmt.Sprintf("Error parsing body to map: %v", jsonErr)
+	data, err := utils.GetRequestBodyAsMap(req.Body)
+	if err != nil {
+		errorRes := fmt.Sprintf("Error parsing request body: %v", err)
 		http.Error(w, errorRes, 500)
 		return
 	}

@@ -2,6 +2,9 @@ package datasource
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
@@ -9,6 +12,14 @@ import (
 
 type SqlDataSource struct {
 	db *sql.DB
+}
+
+var personColumnFields = [...]string{
+	"id", "name", "last_name", "profession", "age",
+}
+
+var personFields = [...]string{
+	"id", "name", "lastName", "profession", "age",
 }
 
 func NewSqlDataSource() *SqlDataSource {
@@ -109,6 +120,62 @@ func (ds *SqlDataSource) SavePerson(person map[string]any) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (ds *SqlDataSource) DeletePerson(id int) error {
+	query := `
+		DELETE FROM people
+		WHERE id = ?
+	`
+	res, err := ds.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	rowsDeleted, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsDeleted == 0 {
+		return PersonNotFoundError{id}
+	}
+
+	return nil
+}
+
+func (ds *SqlDataSource) UpdatePerson(id int, data map[string]any) error {
+	statements := []string{}
+	values := []any{}
+	for i := 1; i < len(personColumnFields); i++ {
+		field := personFields[i]
+		if value, ok := data[field]; ok {
+			statements = append(statements, fmt.Sprintf("%v = ?", personColumnFields[i]))
+			values = append(values, value)
+		}
+	}
+
+	if len(statements) == 0 {
+		return errors.New("failed to update person: no fields to update")
+	}
+
+	query := `
+		UPDATE people
+		SET %v
+		WHERE id = ?
+	`
+	query = fmt.Sprintf(query, strings.Join(statements, ", "))
+	res, err := ds.db.Exec(query, append(values, id)...)
+	if err != nil {
+		return err
+	}
+	rowsUpdated, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsUpdated == 0 {
+		return PersonNotFoundError{id}
 	}
 
 	return nil

@@ -4,8 +4,8 @@ import (
 	"simple_server/datasource"
 )
 
-var DataSource datasource.DataSource
+var DataSource datasource.PeopleDataSource
 
-func SetDataSource(ds datasource.DataSource) {
+func SetDataSource(ds datasource.PeopleDataSource) {
 	DataSource = ds
 }
