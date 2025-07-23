@@ -8,8 +8,9 @@ import (
 	"simple_server/handlers"
 )
 
-func registerHandlers() {
-	http.HandleFunc("/people", handlers.PeopleHandler)
+func registerHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/people", handlers.PeopleHandler)
+	mux.HandleFunc("/people/{id}", handlers.PeopleDetailHandler)
 }
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	// dataSource.DeleteAllPeople()
 	application.SetDataSource(dataSource)
 
-	registerHandlers()
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	mux := http.NewServeMux()
+	registerHandlers(mux)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
