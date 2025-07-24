@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -98,6 +99,29 @@ func writePersonMapToCsv(personMap map[string]any) error {
 
 type CsvDataSource struct{}
 
+func (ds *CsvDataSource) InitFile() error {
+	_, err := os.Stat(fileName)
+	if errors.Is(err, os.ErrNotExist) {
+		// Create file
+		file, err := os.Create(fileName)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		csvWriter := csv.NewWriter(file)
+		err = csvWriter.Write(personFields[:])
+		if err != nil {
+			return err
+		}
+		csvWriter.Flush()
+		if err = csvWriter.Error(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (ds *CsvDataSource) GetPeople() ([]map[string]any, error) {
 	csvContent, readErr := readCsvDataAsString()
 	if readErr != nil {
@@ -120,6 +144,131 @@ func (ds *CsvDataSource) SavePerson(person map[string]any) error {
 	err := writePersonMapToCsv(person)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (ds *CsvDataSource) DeletePerson(id int) error {
+	tempFileName := "temp_data.csv"
+	inFile, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer inFile.Close()
+
+	outFile, err := os.Create(tempFileName)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	csvReader := csv.NewReader(inFile)
+	csvWriter := csv.NewWriter(outFile)
+	foundId := false
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if record[0] == fmt.Sprint(id) {
+			foundId = true
+			continue
+		}
+
+		err = csvWriter.Write(record)
+		if err != nil {
+			return err
+		}
+	}
+	csvWriter.Flush()
+	if err = csvWriter.Error(); err != nil {
+		return err
+	}
+
+	err = os.Rename(tempFileName, fileName)
+	if err != nil {
+		return err
+	}
+
+	if !foundId {
+		return PersonNotFoundError{id}
+	}
+
+	return nil
+}
+
+func (ds *CsvDataSource) UpdatePerson(id int, data map[string]any) error {
+	if len(data) == 0 {
+		return errors.New("payload contains no data")
+	}
+
+	tempFileName := "temp_data.csv"
+	inFile, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer inFile.Close()
+
+	outFile, err := os.Create(tempFileName)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	csvReader := csv.NewReader(inFile)
+	csvWriter := csv.NewWriter(outFile)
+	foundId := false
+	updatedFields := 0
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if record[0] == fmt.Sprint(id) {
+			foundId = true
+			newRecord := make([]string, len(personFields))
+			newRecord[0] = fmt.Sprint(id)
+			for i := 1; i < len(personFields); i++ {
+				field := personFields[i]
+				if value, ok := data[field]; ok {
+					newRecord[i] = fmt.Sprint(value)
+					updatedFields++
+				} else {
+					newRecord[i] = record[i]
+				}
+			}
+			record = newRecord
+		}
+
+		err = csvWriter.Write(record)
+		if err != nil {
+			return err
+		}
+	}
+	csvWriter.Flush()
+	if err = csvWriter.Error(); err != nil {
+		return err
+	}
+
+	err = os.Rename(tempFileName, fileName)
+	if err != nil {
+		return err
+	}
+
+	if !foundId {
+		return PersonNotFoundError{id}
+	}
+	if updatedFields == 0 {
+		return errors.New("no fields to update")
 	}
 
 	return nil

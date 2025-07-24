@@ -18,10 +18,6 @@ var personColumnFields = [...]string{
 	"id", "name", "last_name", "profession", "age",
 }
 
-var personFields = [...]string{
-	"id", "name", "lastName", "profession", "age",
-}
-
 func NewSqlDataSource() *SqlDataSource {
 	return &SqlDataSource{}
 }
@@ -157,7 +153,7 @@ func (ds *SqlDataSource) UpdatePerson(id int, data map[string]any) error {
 	}
 
 	if len(statements) == 0 {
-		return errors.New("failed to update person: no fields to update")
+		return errors.New("no fields to update")
 	}
 
 	query := `
